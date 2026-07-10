@@ -1,0 +1,29 @@
+server:
+  port: ${HARNESS_PORT:8090}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: never
+  # Health check endpoint: GET /actuator/health -> {"status":"UP"}
+
+harness:
+  # Relaxed binding: Docker/shell environment variables override these defaults,
+  # e.g., HARNESS_VERIFY_TLS=true -> harness.verify-tls.
+  verify-tls: ${HARNESS_VERIFY_TLS:false}
+  custom-ca-bundle: ${CUSTOM_CA_BUNDLE:}
+  # host-aliases are set to Map.of() by default via the record constructor;
+  # HOST_ALIASES env (JSON) takes precedence, see HostAliasesResolver.
+  http-timeout: ${HARNESS_HTTP_TIMEOUT:10s}
+  use-dpop: ${USE_DPOP:false}
+  verify-sd-jwt-signature: ${VERIFY_SD_JWT_SIGNATURE:false}
+  credential-config-path: ${CREDENTIAL_CONFIG_PATH:classpath:config/credential-configs.yaml}
+  output-dir: ${OUTPUT_DIR:}
+
+logging:
+  level:
+    de.isernese.eudiwallet.harness: INFO

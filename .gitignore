@@ -1,0 +1,8 @@
+target/
+*.class
+.idea/
+*.iml
+.env
+.DS_Store
+docs/superpowers/
+.flattened-pom.xml

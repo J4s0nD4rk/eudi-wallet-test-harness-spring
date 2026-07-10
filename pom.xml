@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <!-- Spring Boot 4.0 / Spring Framework 7 GA (2025-11-20). Java baseline 17;
+             we intentionally use Java 21 LTS here (see README.md, section 'Assumptions
+             and known limitations'). -->
+        <version>4.1.0</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>de.isernese.eudiwallet.harness</groupId>
+    <artifactId>wallet-test-harness-spring</artifactId>
+    <version>${revision}</version>
+    <name>eudi-wallet-test-harness-spring</name>
+    <description>
+        EUDI Wallet Test Harness: wallet simulator for local/CI testing of a
+        credential issuer (see README.md).
+    </description>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <properties>
+        <revision>0.1.0-SNAPSHOT</revision>
+        <java.version>21</java.version>
+        <bouncycastle.version>1.84</bouncycastle.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
+        <!-- JOSE/JWT: EC key generation, proof JWT (openid4vci-proof+jwt),
+             DPoP proof (RFC 9449), x5c/JWKS signature verification of SD-JWT VC.
+             Transitively pulls in nimbus-jose-jwt at the version managed by Spring Boot. -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-oauth2-jose</artifactId>
+        </dependency>
+
+        <!-- YAML parsing for credential-configs.yaml / harness-specific config file
+             (Jackson 3, version fully managed by Spring Boot 4). -->
+        <dependency>
+            <groupId>tools.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Since Spring Boot 4, @SpringBootTest no longer provides TestRestTemplate
+             automatically (no longer part of spring-boot-starter-test); needed for
+             WalletHarnessApplicationTests (@AutoConfigureTestRestTemplate). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-resttestclient</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Required for RestTemplateBuilder, which since Spring Boot 4.1.0 is in
+             spring-boot-restclient, so that test auto-configuration works. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+        </dependency>
+
+        <!-- Test-only: generation of self-signed X.509 test certificates for the
+             x5c signature verification tests of the SD-JWT parser. Not a runtime dependency. -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>${bouncycastle.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>wallet-test-harness</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <image>
+                        <name>ghcr.io/j4s0nd4rk/eudi-wallet-test-harness-spring:${project.version}</name>
+                    </image>
+                </configuration>
+            </plugin>
+            <!-- Generates a flattened pom.xml with ${revision} resolved to the
+                 concrete version, needed for deployment and image tags. -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <version>1.6.0</version>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>oss</flattenMode>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten-clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- License header management: adds Apache-2.0 headers to all Java files
+                 and fails the build (check goal, bound to test phase) if any file is
+                 missing the header. Run 'mvn license:format' once to add headers. -->
+            <plugin>
+                <groupId>com.mycila</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>4.6</version>
+                <configuration>
+                    <licenseSets>
+                        <licenseSet>
+                            <header>license-header.txt</header>
+                            <includes>
+                                <include>src/**/*.java</include>
+                                <include>examples/**/*.java</include>
+                            </includes>
+                        </licenseSet>
+                    </licenseSets>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>check-license</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Resolves ${org.mockito:mockito-core:jar} below so Mockito's inline
+                 mock maker can be loaded as a static -javaagent instead of self-attaching,
+                 which is deprecated since JDK 21 and prints a runtime warning. -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- -Xshare:off silences the harmless but noisy "Sharing is only supported
+                         for boot loader classes" notice, triggered because the Mockito/byte-buddy
+                         agent appends to the bootstrap classpath. Only affects test-JVM startup. -->
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar} -Xshare:off</argLine>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

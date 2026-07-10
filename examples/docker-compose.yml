@@ -1,0 +1,18 @@
+services:
+  eudi-wallet-harness:
+    image: ghcr.io/j4s0nd4rk/eudi-wallet-test-harness-spring:latest
+    ports:
+      - "8090:8090"
+    env_file:
+      - ../.env
+    volumes:
+      - ../src/main/resources/config:/config:ro
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Placeholder: add the credential issuer here as its own service
+  # once it is containerized, e.g.:
+  # eudi-credential-issuer:
+  #   build: ../pfad/zum/credential-issuer
+  #   ports:
+  #     - "8080:8080"
